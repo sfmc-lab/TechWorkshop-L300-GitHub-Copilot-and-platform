@@ -11,6 +11,12 @@ param tags object = {}
 @allowed(['S0', 'F0'])
 param sku string = 'S0'
 
+@description('Principal ID of the App Service managed identity for role assignment')
+param appServicePrincipalId string = ''
+
+@description('Log Analytics workspace ID for diagnostic settings')
+param logAnalyticsWorkspaceId string = ''
+
 // Azure AI Services (formerly Cognitive Services)
 resource aiServices 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = {
   name: name
@@ -26,6 +32,7 @@ resource aiServices 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = 
   properties: {
     customSubDomainName: name
     publicNetworkAccess: 'Enabled'
+    disableLocalAuth: true // Enforce identity-only access, no API keys
     networkAcls: {
       defaultAction: 'Allow'
     }
@@ -52,6 +59,42 @@ resource gpt4Deployment 'Microsoft.CognitiveServices/accounts/deployments@2023-1
 
 // Note: Phi models can be added via Azure Portal after deployment
 // Model availability varies by region and subscription
+
+// Cognitive Services User role assignment for App Service managed identity
+resource cognitiveServicesUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(appServicePrincipalId)) {
+  name: guid(aiServices.id, appServicePrincipalId, 'cognitive-services-user')
+  scope: aiServices
+  properties: {
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'a97b65f3-24c7-4388-baec-2e87135dc908') // Cognitive Services User
+    principalId: appServicePrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Diagnostic settings to send all logs to Log Analytics
+resource diagnosticSettings 'Microsoft.Insights/diagnosticSettings@2021-05-01-preview' = if (!empty(logAnalyticsWorkspaceId)) {
+  name: '${aiServices.name}-diagnostics'
+  scope: aiServices
+  properties: {
+    workspaceId: logAnalyticsWorkspaceId
+    logs: [
+      {
+        categoryGroup: 'allLogs'
+        enabled: true
+      }
+      {
+        categoryGroup: 'audit'
+        enabled: true
+      }
+    ]
+    metrics: [
+      {
+        category: 'AllMetrics'
+        enabled: true
+      }
+    ]
+  }
+}
 
 output id string = aiServices.id
 output name string = aiServices.name
