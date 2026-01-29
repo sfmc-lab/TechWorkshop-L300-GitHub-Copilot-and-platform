@@ -17,6 +17,9 @@ param appServicePrincipalId string = ''
 @description('Log Analytics workspace ID for diagnostic settings')
 param logAnalyticsWorkspaceId string = ''
 
+@description('Disable local authentication (API keys) and enforce managed identity only. Set to true for production security.')
+param disableLocalAuth bool = false
+
 // Azure AI Services (formerly Cognitive Services)
 resource aiServices 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = {
   name: name
@@ -32,7 +35,7 @@ resource aiServices 'Microsoft.CognitiveServices/accounts@2023-10-01-preview' = 
   properties: {
     customSubDomainName: name
     publicNetworkAccess: 'Enabled'
-    disableLocalAuth: true // Enforce identity-only access, no API keys
+    disableLocalAuth: disableLocalAuth
     networkAcls: {
       defaultAction: 'Allow'
     }
