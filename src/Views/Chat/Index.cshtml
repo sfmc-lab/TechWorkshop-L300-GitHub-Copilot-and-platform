@@ -1,0 +1,140 @@
+@{
+    ViewData["Title"] = "Chat";
+}
+
+<div class="container mt-4">
+    <h1 class="mb-4">Chat Assistant</h1>
+    
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Conversation</h5>
+                </div>
+                <div class="card-body">
+                    <div id="chat-conversation" class="border rounded p-3 mb-3" style="height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                        <p class="text-muted">Start a conversation by typing a message below...</p>
+                    </div>
+                    
+                    <form id="chat-form">
+                        <div class="input-group">
+                            <input type="text" id="user-message" class="form-control" placeholder="Type your message..." required>
+                            <button type="submit" id="send-button" class="btn btn-primary">
+                                <i class="bi bi-send"></i> Send
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="mt-3">
+                <small class="text-muted">
+                    <i class="bi bi-info-circle"></i> This chat assistant uses Microsoft Foundry Phi-4 model to help answer your questions.
+                </small>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Tips</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><i class="bi bi-chat-dots text-primary"></i> Ask about our products</li>
+                        <li class="mb-2"><i class="bi bi-question-circle text-primary"></i> Get help with your order</li>
+                        <li class="mb-2"><i class="bi bi-info-circle text-primary"></i> Learn about Zava Storefront</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        const chatForm = document.getElementById('chat-form');
+        const userMessageInput = document.getElementById('user-message');
+        const sendButton = document.getElementById('send-button');
+        const chatConversation = document.getElementById('chat-conversation');
+
+        // Clear initial message on first interaction
+        let isFirstMessage = true;
+
+        chatForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const message = userMessageInput.value.trim();
+            if (!message) return;
+
+            // Clear initial message if this is the first interaction
+            if (isFirstMessage) {
+                chatConversation.innerHTML = '';
+                isFirstMessage = false;
+            }
+
+            // Add user message to conversation
+            addMessageToConversation('You', message, 'user');
+            
+            // Clear input and disable button
+            userMessageInput.value = '';
+            sendButton.disabled = true;
+            sendButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...';
+
+            try {
+                // Send message to server
+                const response = await fetch('/Chat/SendMessage', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                
+                // Add assistant response to conversation
+                addMessageToConversation('Assistant', data.response, 'assistant');
+            } catch (error) {
+                console.error('Error:', error);
+                addMessageToConversation('System', 'Sorry, there was an error processing your message. Please try again.', 'error');
+            } finally {
+                // Re-enable button
+                sendButton.disabled = false;
+                sendButton.innerHTML = '<i class="bi bi-send"></i> Send';
+                userMessageInput.focus();
+            }
+        });
+
+        function addMessageToConversation(sender, message, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'mb-3';
+            
+            const senderClass = type === 'user' ? 'text-primary' : type === 'error' ? 'text-danger' : 'text-success';
+            const bgClass = type === 'user' ? 'bg-light' : type === 'error' ? 'bg-danger bg-opacity-10' : 'bg-white';
+            
+            messageDiv.innerHTML = `
+                <div class="p-2 rounded ${bgClass}">
+                    <strong class="${senderClass}">${sender}:</strong>
+                    <p class="mb-0 mt-1">${escapeHtml(message)}</p>
+                </div>
+            `;
+            
+            chatConversation.appendChild(messageDiv);
+            chatConversation.scrollTop = chatConversation.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Focus on input when page loads
+        userMessageInput.focus();
+    </script>
+}

@@ -16,8 +16,10 @@ builder.Services.AddSession(options =>
 
 // Register application services
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient();
 builder.Services.AddSingleton<ProductService>();
 builder.Services.AddScoped<CartService>();
+builder.Services.AddScoped<ChatService>();
 
 var app = builder.Build();
 

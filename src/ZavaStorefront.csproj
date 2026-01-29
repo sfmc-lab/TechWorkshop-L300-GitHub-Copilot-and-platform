@@ -6,4 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>a6f79a5c-bc53-45b5-84fd-7ee3a95ef26f</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.13.1" />
+  </ItemGroup>
 </Project>
